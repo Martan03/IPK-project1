@@ -1,0 +1,14 @@
+/mnt/School/3BIT/IPK/IPK-project1/bin/Debug/net8.0/IPK-project1
+/mnt/School/3BIT/IPK/IPK-project1/bin/Debug/net8.0/IPK-project1.deps.json
+/mnt/School/3BIT/IPK/IPK-project1/bin/Debug/net8.0/IPK-project1.runtimeconfig.json
+/mnt/School/3BIT/IPK/IPK-project1/bin/Debug/net8.0/IPK-project1.dll
+/mnt/School/3BIT/IPK/IPK-project1/bin/Debug/net8.0/IPK-project1.pdb
+/mnt/School/3BIT/IPK/IPK-project1/obj/Debug/net8.0/IPK-project1.GeneratedMSBuildEditorConfig.editorconfig
+/mnt/School/3BIT/IPK/IPK-project1/obj/Debug/net8.0/IPK-project1.AssemblyInfoInputs.cache
+/mnt/School/3BIT/IPK/IPK-project1/obj/Debug/net8.0/IPK-project1.AssemblyInfo.cs
+/mnt/School/3BIT/IPK/IPK-project1/obj/Debug/net8.0/IPK-project1.csproj.CoreCompileInputs.cache
+/mnt/School/3BIT/IPK/IPK-project1/obj/Debug/net8.0/IPK-project1.dll
+/mnt/School/3BIT/IPK/IPK-project1/obj/Debug/net8.0/refint/IPK-project1.dll
+/mnt/School/3BIT/IPK/IPK-project1/obj/Debug/net8.0/IPK-project1.pdb
+/mnt/School/3BIT/IPK/IPK-project1/obj/Debug/net8.0/IPK-project1.genruntimeconfig.cache
+/mnt/School/3BIT/IPK/IPK-project1/obj/Debug/net8.0/ref/IPK-project1.dll
