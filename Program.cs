@@ -1,39 +1,76 @@
 ﻿using System.Net.Sockets;
-using CommandLine;
 
 namespace IPK_project1;
 
-class Options
-{
-    [Option('h', Required = true, HelpText = "Sets host to given address")]
-    public string? Host { get; set; }
-    [Option('p', Required = true, HelpText = "Sets port to given port value")]
-    public ushort Port { get; set; }
-    [Option('m', Required = true,
-        HelpText = "Sets communication mode (valid values: udp/tcp)")]
-    public string? Mode { get; set; }
-}
-
 class Program
 {
-    static void Main(string[] args)
-    {
-        Parser.Default.ParseArguments<Options>(args).WithParsed(o => {
-            switch (o.Mode) {
-                case "udp":
-                    Console.WriteLine($"UDP: host {o.Host} port {o.Port}");
-                    break;
-                case "tcp":
-                    TcpMessage(o.Host!, o.Port);
-                    break;
-                default:
-                    Console.WriteLine($"Invalid communication mode: {o.Mode}");
-                    break;
-            }
-        });
+    static void Main(string[] args) {
+        Options? options = ParseArgs(args);
     }
 
-    static void TcpMessage(string host, ushort port) {
+    /// <summary>
+    /// Parses input arguments
+    /// </summary>
+    /// <param name="args">array of arguments</param>
+    static Options? ParseArgs(string[] args) {
+        bool help = false;
+        Options options = new();
+
+        foreach (string arg in args) {
+            switch (arg) {
+                case "-t":
+                    options.Type = arg;
+                    break;
+                case "-s":
+                    options.Host = arg;
+                    break;
+                case "-p":
+                    if (ushort.TryParse(arg, out ushort port)) {
+                        options.Port = port;
+                    } else {
+                        Console.WriteLine("Invalid port");
+                        return null;
+                    }
+                    break;
+                case "-d":
+                    if (ushort.TryParse(arg, out ushort timeout)) {
+                        options.Timeout = timeout;
+                    } else {
+                        Console.WriteLine("Invalid timeout");
+                        return null;
+                    }
+                    break;
+                case "-r":
+                    if (byte.TryParse(arg, out byte retransmit)) {
+                        options.Retransmit = retransmit;
+                    } else {
+                        Console.WriteLine("Invalid retransmit");
+                        return null;
+                    }
+                    break;
+                case "-h":
+                    help = true;
+                    break;
+            }
+        }
+
+        if (!help)
+            return options;
+
+        if (args.Length >= 2) {
+            Console.WriteLine("Help must be used alone");
+            return null;
+        }
+
+        Help();
+        return null;
+    }
+
+    static void Help() {
+        Console.WriteLine("TODO");
+    }
+
+    /*static void TcpMessage(string host, ushort port) {
         TcpClient client = new TcpClient(host, port);
         NetworkStream stream = client.GetStream();
 
@@ -59,5 +96,5 @@ class Program
         writer.Close();
         stream.Close();
         client.Close();
-    }
+    }*/
 }
