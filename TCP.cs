@@ -11,19 +11,41 @@ public class TCP : IComm {
     /// Constructs new TCP communication
     /// </summary>
     /// <param name="args">parsed arguments</param>
-    public TCP(Args args) {
-        Client = new TcpClient(args.Host!, args.Port);
+    public TCP(string host, ushort port) {
+        Client = new TcpClient(host, port);
         Stream = Client.GetStream();
     }
 
     public string Auth(string name, string secret, string nick) {
         if (State != ComState.Start && State != ComState.Auth)
-            return false;
+            return "";
 
         State = ComState.Auth;
         Send($"AUTH {name} AS {nick} USING {secret}\r\n");
 
-        return true;
+        return RecvWait();
+    }
+
+    public string Join(string name, string channel) {
+        if (State != ComState.Open)
+            return "";
+
+        Send($"JOIN {channel} AS {name}\r\n");
+        return RecvWait();
+    }
+
+    public string Msg(string from, string msg) {
+        if (State != ComState.Open)
+            return "";
+
+        Send($"MSG FROM {from} IS {msg}\r\n");
+        return RecvWait();
+    }
+
+    public void Bye() {
+        if (State != ComState.Start && State != ComState.End)
+            Send("BYE");
+        State = ComState.End;
     }
 
     public void Send(string msg) {
@@ -42,12 +64,6 @@ public class TCP : IComm {
         }
 
         return Encoding.UTF8.GetString(msg.ToArray());
-    }
-
-    public void Bye() {
-        if (State != ComState.Start && State != ComState.End)
-            Send("BYE");
-        State = ComState.End;
     }
 
     /// <summary>
