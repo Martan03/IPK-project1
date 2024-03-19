@@ -1,73 +1,17 @@
 ﻿using System.Net.Sockets;
+using System.Text.RegularExpressions;
 
 namespace IPK_project1;
 
 class Program
 {
     static void Main(string[] args) {
-        Options? options = ParseArgs(args);
-    }
-
-    /// <summary>
-    /// Parses input arguments
-    /// </summary>
-    /// <param name="args">array of arguments</param>
-    static Options? ParseArgs(string[] args) {
-        bool help = false;
-        Options options = new();
-
-        foreach (string arg in args) {
-            switch (arg) {
-                case "-t":
-                    options.Type = arg;
-                    break;
-                case "-s":
-                    options.Host = arg;
-                    break;
-                case "-p":
-                    if (ushort.TryParse(arg, out ushort port)) {
-                        options.Port = port;
-                    } else {
-                        Console.WriteLine("Invalid port");
-                        return null;
-                    }
-                    break;
-                case "-d":
-                    if (ushort.TryParse(arg, out ushort timeout)) {
-                        options.Timeout = timeout;
-                    } else {
-                        Console.WriteLine("Invalid timeout");
-                        return null;
-                    }
-                    break;
-                case "-r":
-                    if (byte.TryParse(arg, out byte retransmit)) {
-                        options.Retransmit = retransmit;
-                    } else {
-                        Console.WriteLine("Invalid retransmit");
-                        return null;
-                    }
-                    break;
-                case "-h":
-                    help = true;
-                    break;
-            }
+        Args arg = new();
+        try {
+            arg.Parse(args);
+        } catch (Exception e) {
+            Console.Error.WriteLine($"Error: {e.Message}");
         }
-
-        if (!help)
-            return options;
-
-        if (args.Length >= 2) {
-            Console.WriteLine("Help must be used alone");
-            return null;
-        }
-
-        Help();
-        return null;
-    }
-
-    static void Help() {
-        Console.WriteLine("TODO");
     }
 
     /*static void TcpMessage(string host, ushort port) {
