@@ -7,9 +7,9 @@ public enum ComType {
     UDP
 }
 
-class Args {
-    public ComType? Type { get; private set; }
-    public string? Host { get; private set; }
+public class Args {
+    public ComType Type { get; private set; }
+    public string Host { get; private set; } = "";
     public ushort Port { get; private set; } = 4567;
     public ushort Timeout { get; private set; } = 250;
     public byte Retransmit { get; private set; } = 3;
@@ -19,7 +19,9 @@ class Args {
     /// </summary>
     /// <param name="args">Span of arguments</param>
     /// <exception cref="ArgumentException">Invalid usage</exception>
-    public void Parse(ReadOnlySpan<string> args) {
+    public Args(ReadOnlySpan<string> args) {
+        bool type = false;
+        bool host = false;
         while (!args.IsEmpty) {
             switch (args[0]) {
                 case "-t":
@@ -31,10 +33,12 @@ class Args {
                             "Invalid type given: " + args[0]
                         ),
                     };
+                    type = true;
                     break;
                 case "-s":
                     args = GetNext(args);
                     Host = args[0];
+                    host = true;
                     break;
                 case "-p":
                     args = GetNext(args);
@@ -63,9 +67,9 @@ class Args {
             args = args[1..];
         }
 
-        if (Type is null)
+        if (!type)
             throw new ArgumentException("Type must be specified");
-        if (Host is null)
+        if (!host)
             throw new ArgumentException("Host must be specified");
     }
 
