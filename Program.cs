@@ -6,6 +6,7 @@ class Program
         try {
             Args arg = new(args);
             Client client = new(arg);
+            Console.WriteLine("Connected...");
             client.Start();
         } catch (Exception e) {
             Console.Error.WriteLine($"Error: {e.Message}");

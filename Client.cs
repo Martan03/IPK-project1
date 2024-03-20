@@ -54,12 +54,27 @@ public class Client {
                     // Throw custom exception here
                     return "";
                 }
-                return Com.Auth(parts[1], parts[2], parts[3]);
+                var res = Com.Auth(parts[1], parts[2], parts[3]);
+                if (res.StartsWith("REPLY OK"))
+                    Name = parts[1];
+                return res;
             case "/join":
-                break;
+                if (parts.Length != 2) {
+                    Console.Error.WriteLine("Invalid number of arguments");
+                    return "";
+                }
+
+                return Com.Join(Name!, parts[1]);
             case "/rename":
+                if (parts.Length != 2) {
+                    Console.Error.WriteLine("Invalid number of arguments");
+                    return "";
+                }
+
+                Name = parts[1];
                 break;
             case "/help":
+                Console.WriteLine("TODO");
                 break;
             default:
                 Console.Error.WriteLine($"Invalid command: {parts[0]}");
