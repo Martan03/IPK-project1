@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 public class Client {
     Args Arg { get; set; }
     IComm Com { get; set; }
@@ -38,11 +40,9 @@ public class Client {
         Com.Close();
     }
 
-    private string ParseInput(string text) {
+    private void ParseInput(string text) {
         if (text.StartsWith('/'))
-            return ParseCmd(text);
-
-        return "";
+            ParseResponse(ParseCmd(text));
     }
 
     private string ParseCmd(string text) {
@@ -81,5 +81,64 @@ public class Client {
                 break;
         }
         return "";
+    }
+
+    private void ParseResponse(string res) {
+        if (res.StartsWith("ERR")) {
+            string pattern =
+                @"^ERR FROM ([a-zA-Z0-9\-]+) IS ([\x20-\x7E]+)\r\n";
+            var match = Regex.Match(res, pattern);
+
+            if (!match.Success)
+                return;
+
+            Console.Error.WriteLine(
+                $"ERR FROM {match.Groups[1].Value}: {match.Groups[2].Value}"
+            );
+        } else if (res.StartsWith("REPLY OK")) {
+            string pattern = @"^REPLY OK IS ([\x20-\x7E]+)\r\n";
+            var match = Regex.Match(res, pattern);
+
+            if (!match.Success)
+                return;
+
+            Console.WriteLine($"Success: {match.Groups[1].Value}");
+        } else if (res.StartsWith("REPLY NOK")) {
+            string pattern = @"^REPLY NOK IS ([\x20-\x7E]+)\r\n";
+            var match = Regex.Match(res, pattern);
+
+            if (!match.Success)
+                return;
+
+            Console.WriteLine($"Failure: {match.Groups[1].Value}");
+        } else if (res.StartsWith("MSG")) {
+            string pattern =
+                @"MSG FROM ([a-zA-Z0-9\-]+) IS ([\x20-\x7E]+)\r\n";
+            var match = Regex.Match(res, pattern);
+
+            if (!match.Success)
+                return;
+
+            Console.WriteLine(
+                $"{match.Groups[1].Value}: {match.Groups[2].Value}"
+            );
+        } else if (res.Equals("BYE\r\n")) {
+            Com.State = ComState.End;
+        }
+    }
+
+    private bool CheckName(string name, int max) {
+        string pattern = @"^[a-zA-Z0-9\-]+$";
+        return name.Length <= max && Regex.IsMatch(name, pattern);
+    }
+
+    private bool CheckNick(string name, int max) {
+        string pattern = @"^[\x21-\x7E]+$";
+        return name.Length <= max && Regex.IsMatch(name, pattern);
+    }
+
+    private bool CheckContent(string content, int max) {
+        string pattern = @"^[\x20-\x7E]+$";
+        return content.Length <= max && Regex.IsMatch(content, pattern);
     }
 }
