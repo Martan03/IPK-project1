@@ -2,6 +2,7 @@ using System.Text;
 
 public class InputReader {
     private StringBuilder Text { get; set; }
+    private int WindowWidth { get; set; } = 1;
     private int Pos { get; set; } = 0;
 
     /// <summary>
@@ -16,6 +17,12 @@ public class InputReader {
     /// Reads available keys from input
     /// </summary>
     public string Read() {
+        var width = Console.WindowWidth;
+        if (width != WindowWidth) {
+            WindowWidth = width;
+            Redraw();
+        }
+
         while (Console.KeyAvailable) {
             var key = Console.ReadKey();
             switch (key.Key) {
@@ -28,16 +35,22 @@ public class InputReader {
                     Delete();
                     break;
                 case ConsoleKey.Home:
-                    Home();
+                    MoveTo(0);
                     break;
                 case ConsoleKey.End:
-                    End();
+                    MoveTo(Text.Length);
                     break;
                 case ConsoleKey.LeftArrow:
-                    CursorLeft();
+                    MoveTo(Pos - 1);
                     break;
                 case ConsoleKey.RightArrow:
-                    CursorRight();
+                    MoveTo(Pos + 1);
+                    break;
+                case ConsoleKey.UpArrow:
+                    MoveTo(Pos - WindowWidth);
+                    break;
+                case ConsoleKey.DownArrow:
+                    MoveTo(Pos + WindowWidth);
                     break;
                 default:
                     Text.Insert(Pos, key.KeyChar);
@@ -49,6 +62,11 @@ public class InputReader {
             }
         }
         return "";
+    }
+
+    private void Redraw() {
+        Console.Write($"\u001b8\x1b[0J{Text}");
+        MoveTo(Pos);
     }
 
     private string Enter() {
@@ -71,7 +89,7 @@ public class InputReader {
 
         var after = Text.ToString().Substring(Pos);
         Console.Write($"\x1b[0J{after}");
-        Console.CursorLeft -= after.Length;
+        MoveTo(Pos);
     }
 
     private void Delete() {
@@ -81,55 +99,20 @@ public class InputReader {
         Text.Remove(Pos, 1);
         var after = Text.ToString().Substring(Pos);
         Console.Write($"\x1b[0J{after}");
-        Console.CursorLeft -= after.Length;
-    }
-
-    private void Home() {
-        Console.Write("\u001b8");
-        Pos = 0;
-    }
-
-    private void End() {
-        var width = Console.WindowWidth;
-        Pos = Text.Length;
-        Console.Write($"\u001b8\x1b[{Pos / width}B\x1b[{Pos % width}C");
-    }
-
-    private void CursorLeft() {
-        if (Pos <= 0)
-            return;
-
-        Pos--;
-        if (Console.CursorLeft == 0) {
-            Console.SetCursorPosition(
-                Console.WindowWidth - 1,
-                Console.CursorTop - 1
-            );
-        } else {
-            Console.CursorLeft--;
-        }
-    }
-
-    private void CursorRight() {
-        if (Pos >= Text.Length)
-            return;
-
-        Pos++;
-        if (Console.CursorLeft == Console.WindowWidth - 1)
-            Console.SetCursorPosition(0, Console.CursorTop + 1);
-        else
-            Console.CursorLeft++;
+        MoveTo(Pos);
     }
 
     private void MoveTo(int pos) {
-        var width = Console.WindowWidth;
-        Console.Write($"\u001b8");
+        if (pos < 0 || pos > Text.Length)
+            return;
 
-        var top = pos / width;
+        Pos = pos;
+        Console.Write($"\u001b8");
+        var top = pos / WindowWidth;
         if (top > 0)
             Console.Write($"\x1b[{top}B");
 
-        var left = pos % width;
+        var left = pos % WindowWidth;
         if (left > 0)
             Console.Write($"\x1b[{left}C");
     }
