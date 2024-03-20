@@ -64,18 +64,34 @@ public class InputReader {
         return "";
     }
 
+    public void Print(string text) {
+        Console.WriteLine($"\u001b8\x1b[0J{text}");
+        Console.Write($"\u001b7{Text}");
+        MoveTo(Pos);
+    }
+
+    public void PrintErr(string text) {
+        Console.Error.WriteLine($"\u001b8\x1b[0J{text}");
+        Console.Write($"\u001b7{Text}");
+        MoveTo(Pos);
+    }
+
+    public void ResetPrint() {
+        Console.Write($"\u001b7{Text}");
+    }
+
     private void Redraw() {
         Console.Write($"\u001b8\x1b[0J{Text}");
         MoveTo(Pos);
     }
 
     private string Enter() {
+        Console.WriteLine($"\u001b8{Text}");
+        Console.Write("\u001b7");
+        Pos = 0;
+
         var res = Text.ToString();
         Text.Clear();
-
-        Pos = 0;
-        Console.CursorTop++;
-
         return res;
     }
 

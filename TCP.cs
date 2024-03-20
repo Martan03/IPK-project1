@@ -16,30 +16,35 @@ public class TCP : IComm {
         Stream = Client.GetStream();
     }
 
-    public string Auth(string name, string secret, string nick) {
+    public bool Auth(string name, string secret, string nick) {
         if (State != ComState.Start && State != ComState.Auth)
-            return "";
+            return false;
 
         State = ComState.Auth;
         Send($"AUTH {name} AS {nick} USING {secret}\r\n");
 
-        return RecvWait();
+        return true;
     }
 
-    public string Join(string name, string channel) {
+    public bool Join(string name, string channel) {
         if (State != ComState.Open)
-            return "";
+            return false;
 
         Send($"JOIN {channel} AS {name}\r\n");
-        return RecvWait();
+        return true;
     }
 
-    public string Msg(string from, string msg) {
+    public bool Msg(string from, string msg) {
         if (State != ComState.Open)
-            return "";
+            return false;
 
         Send($"MSG FROM {from} IS {msg}\r\n");
-        return RecvWait();
+        return true;
+    }
+
+    public void Err(string from, string msg) {
+        Send($"ERROR FROM {from} IS {msg}\r\n");
+        State = ComState.End;
     }
 
     public void Bye() {
@@ -72,18 +77,5 @@ public class TCP : IComm {
     public void Close() {
         Stream.Close();
         Client.Close();
-    }
-
-    string RecvWait() {
-        List<byte> msg = new();
-        while (Stream.DataAvailable) {
-            int val = Stream.ReadByte();
-            if (val == -1)
-                break;
-
-            msg.Add((byte)val);
-        }
-
-        return Encoding.UTF8.GetString(msg.ToArray());
     }
 }

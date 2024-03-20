@@ -15,24 +15,31 @@ public interface IComm {
     /// <param name="name">Username</param>
     /// <param name="secret">Secret/password</param>
     /// <param name="nick">Display name</param>
-    /// <returns>Response message</returns>
-    string Auth(string name, string secret, string nick);
+    /// <returns>False when Auth cannot be used in current state</returns>
+    bool Auth(string name, string secret, string nick);
 
     /// <summary>
     /// Joins given channel
     /// </summary>
     /// <param name="name">Display name</param>
     /// <param name="channel">Channel ID</param>
-    /// <returns>Response string</returns>
-    string Join(string name, string channel);
+    /// <returns>Fale when Join cannot be used in current state</returns>
+    bool Join(string name, string channel);
 
     /// <summary>
     /// Send MSG to the server
     /// </summary>
     /// <param name="from">Display name</param>
     /// <param name="msg">Message</param>
-    /// <returns>Response message</returns>
-    string Msg(string from, string msg);
+    /// <returns>False when Msg cannot be used in current state</returns>
+    bool Msg(string from, string msg);
+
+    /// <summary>
+    /// Sends ERR to the server
+    /// </summary>
+    /// <param name="from">Display name</param>
+    /// <param name="msg">Message</param>
+    void Err(string from, string msg);
 
     /// <summary>
     /// Terminates conversation
