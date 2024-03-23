@@ -46,8 +46,6 @@ public interface IComm {
     /// </summary>
     void Bye();
 
-    void Send(string msg);
-
     string Recv();
 
     void Close();
