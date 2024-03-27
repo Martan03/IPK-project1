@@ -8,7 +8,7 @@ class Program
             if (arg.Help)
                 return;
 
-            UDPClient client = new(arg);
+            Client client = new(arg);
             Console.WriteLine("Connected...");
             client.Start();
         } catch (Exception e) {

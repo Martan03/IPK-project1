@@ -1,6 +1,4 @@
-using System.Text.RegularExpressions;
-
-enum Response {
+public enum Response {
     ReplyOk,
     ReplyNok,
     Msg,
@@ -10,20 +8,21 @@ enum Response {
 }
 
 public class Client {
+    ComState State { get; set; } = ComState.Start;
+
     Args Arg { get; set; }
     IComm Com { get; set; }
     string? Name { get; set; }
     InputReader Reader { get; set; }
 
-    /// <summary>
-    /// Creates new Client
-    /// </summary>
-    /// <param name="arg">Parsed arguments</param>
     public Client(Args arg) {
         Arg = arg;
-        Com = Arg.Type switch {
-            ComType.TCP => new TCP(Arg.Host, Arg.Port),
-            _ => throw new NotImplementedException("UDP is not implemented"),
+        Com = arg.Type switch {
+            ComType.TCP => new TCP(arg.Host, arg.Port),
+            ComType.UDP => new UDP(arg),
+            _ => throw new ArgumentException(
+                "Invalid communication type given"
+            ),
         };
         Reader = new();
 
@@ -33,19 +32,16 @@ public class Client {
         };
     }
 
-    /// <summary>
-    /// Starts the Client loop
-    /// </summary>
     public void Start() {
         Reader.ResetPrint();
-        while (Com.State != ComState.End) {
+        while (State != ComState.End) {
             var read = Reader.Read();
             if (read.Length != 0)
                 ParseInput(read);
 
             var recv = Com.Recv();
             if (recv.Length != 0)
-                ParseRecv(recv);
+                NextState(Com.ParseRecv(Reader, recv));
         }
 
         Com.Close();
@@ -56,11 +52,18 @@ public class Client {
     /// </summary>
     /// <param name="text">Text entered by user</param>
     private void ParseInput(string text) {
-        if (text.StartsWith('/'))
-            ParseCmd(text);
+        try {
+            if (text.StartsWith('/')) {
+                ParseCmd(text);
+                return;
+            }
 
-        else if (!Com.Msg(Name!, text))
-            Reader.PrintErr("ERR: Cannot send messages in this state");
+            Msg(text);
+        } catch (ArgumentException e) {
+            Reader.PrintErr($"ERR: {e.Message}");
+        } catch (InvalidOperationException e) {
+            Reader.PrintErr($"ERR: {e.Message}");
+        }
     }
 
     /// <summary>
@@ -71,42 +74,13 @@ public class Client {
         string[] parts = text.Split();
         switch (parts[0]) {
             case "/auth":
-                if (parts.Length != 4 || !CheckName(parts[1], 20) ||
-                    !CheckName(parts[2], 128) || !CheckNick(parts[3], 20)) {
-                    Reader.PrintErr(
-                        "ERR: Invalid usage. Type /help to show help"
-                    );
-                    return;
-                }
-
-                if (!Com.Auth(parts[1], parts[2], parts[3])) {
-                    Reader.PrintErr("Cannot use Auth in this state");
-                    return;
-                }
-                Name = parts[3];
+                Auth(parts[1..]);
                 break;
             case "/join":
-                if (parts.Length != 2 || !CheckChannel(parts[1])) {
-                    Reader.PrintErr(
-                        "ERR: Invalid usage. Type /help to show help"
-                    );
-                    return;
-                }
-
-                if (!Com.Join(Name!, parts[1])) {
-                    Reader.PrintErr("ERR: Cannot use Join in this state");
-                    return;
-                }
+                Join(parts[1..]);
                 break;
             case "/rename":
-                if (parts.Length != 2 || !CheckNick(parts[1], 20)) {
-                    Reader.PrintErr(
-                        "ERR: Invalid usage. Type /help to show help"
-                    );
-                    return;
-                }
-
-                Name = parts[1];
+                Rename(parts[1..]);
                 break;
             case "/help":
                 Help();
@@ -117,75 +91,85 @@ public class Client {
         }
     }
 
-    private void ParseRecv(string res) {
-        if (res.StartsWith("ERR")) {
-            string pattern =
-                @"^ERR FROM ([a-zA-Z0-9\-]+) IS ([\x20-\x7E]+)\r\n";
-            var match = Regex.Match(res, pattern);
-
-            if (!match.Success)
-                return;
-
-            Reader.PrintErr(
-                $"ERR FROM {match.Groups[1].Value}: {match.Groups[2].Value}"
-            );
-            NextState(Response.Err);
-        } else if (res.StartsWith("REPLY OK")) {
-            string pattern = @"^REPLY OK IS ([\x20-\x7E]+)\r\n";
-            var match = Regex.Match(res, pattern);
-
-            if (!match.Success)
-                return;
-
-            Reader.PrintErr($"Success: {match.Groups[1].Value}");
-            NextState(Response.ReplyOk);
-        } else if (res.StartsWith("REPLY NOK")) {
-            string pattern = @"^REPLY NOK IS ([\x20-\x7E]+)\r\n";
-            var match = Regex.Match(res, pattern);
-
-            if (!match.Success)
-                return;
-
-            Reader.PrintErr($"Failure: {match.Groups[1].Value}");
-            NextState(Response.ReplyNok);
-        } else if (res.StartsWith("MSG")) {
-            string pattern =
-                @"MSG FROM ([a-zA-Z0-9\-]+) IS ([\x20-\x7E]+)\r\n";
-            var match = Regex.Match(res, pattern);
-
-            if (!match.Success)
-                return;
-
-            Reader.Print($"{match.Groups[1].Value}: {match.Groups[2].Value}");
-            NextState(Response.Msg);
-        } else if (res.Equals("BYE\r\n")) {
-            Com.State = ComState.End;
-        }
-    }
-
     /// <summary>
     /// Sets next state if possible
     /// </summary>
     /// <param name="res">Current server response</param>
     private void NextState(Response res) {
-        switch (Com.State) {
+        switch (State) {
             case ComState.Auth:
-                if (res == Response.ReplyOk)
-                    Com.State = ComState.Open;
-                else if (res == Response.Err)
+                if (res == Response.ReplyOk) {
+                    State = ComState.Open;
+                } else if (res == Response.Err) {
                     Com.Bye();
+                    State = ComState.End;
+                }
                 break;
             case ComState.Open:
                 // Add error send
-                if (res == Response.None)
+                if (res == Response.Err) {
                     Com.Bye();
-                else if (res == Response.Err)
-                    Com.Bye();
-                else if (res == Response.Bye)
-                    Com.State = ComState.End;
+                    State = ComState.End;
+                } else if (res == Response.Bye) {
+                    State = ComState.End;
+                }
                 break;
         }
     }
+
+    private void Auth(ReadOnlySpan<string> args) {
+        if (args.Length != 3)
+            throw new ArgumentException("Auth: invalid number of arguments");
+
+        if (State != ComState.Start && State != ComState.Auth) {
+            throw new InvalidOperationException(
+                "Cannot be authorized in this state"
+            );
+        }
+        State = ComState.Auth;
+
+        Validator.Username(args[0]);
+        Validator.Secret(args[1]);
+        Validator.DisplayName(args[2]);
+
+        Com.Auth(args[0], args[1], args[2]);
+        Name = args[2];
+    }
+
+    private void Join(ReadOnlySpan<string> args) {
+        if (args.Length != 1)
+            throw new ArgumentException("Join: invalid number of arguments");
+
+        if (State != ComState.Open) {
+            throw new InvalidOperationException(
+                "Cannot join channel in this state"
+            );
+        }
+
+        Validator.ChannelID(args[0]);
+        Com.Join(Name!, args[0]);
+    }
+
+    private void Rename(ReadOnlySpan<string> args) {
+        if (args.Length != 1)
+            throw new ArgumentException("Rename: invalid number of arguments");
+
+        Validator.DisplayName(args[0]);
+        Name = args[0];
+    }
+
+    private void Msg(string text) {
+        if (State != ComState.Open) {
+            throw new InvalidOperationException(
+                "Cannot send messages in this state"
+            );
+        }
+
+        Validator.DisplayName(Name!);
+        Validator.MessageContent(text);
+        Com.Msg(Name!, text);
+    }
+
 
     /// <summary>
     /// Displays help
@@ -203,25 +187,5 @@ public class Client {
             "/help\n" +
             "  Displays this help"
         );
-    }
-
-    private bool CheckName(string name, int max) {
-        string pattern = @"^[a-zA-Z0-9\-]+$";
-        return name.Length <= max && Regex.IsMatch(name, pattern);
-    }
-
-    private bool CheckChannel(string name) {
-        name = name.Replace(".", "");
-        return CheckName(name, 20);
-    }
-
-    private bool CheckNick(string name, int max) {
-        string pattern = @"^[\x21-\x7E]+$";
-        return name.Length <= max && Regex.IsMatch(name, pattern);
-    }
-
-    private bool CheckContent(string content, int max) {
-        string pattern = @"^[\x20-\x7E]+$";
-        return content.Length <= max && Regex.IsMatch(content, pattern);
     }
 }

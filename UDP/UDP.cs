@@ -2,30 +2,13 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-public class MessageItem {
-    public DateTime Time { get; set; }
-    public byte[] Msg { get; set; }
-    public byte Retries { get; set; }
-
-    public MessageItem(byte[] msg) {
-        Msg = msg;
-        Time = DateTime.Now;
-        Retries = 0;
-    }
-
-    public void Next() {
-        Time = DateTime.Now;
-        Retries++;
-    }
-}
-
-public class UDP {
+public class UDP : IComm {
     private UdpClient Client { get; set; } = new();
     private IPEndPoint EP;
     private Args Arg { get; set; }
 
     private ushort MsgId { get; set; } = 0;
-    private Dictionary<int, MessageItem> Msgs { get; set; } = new();
+    private Dictionary<int, MsgItem> Msgs { get; set; } = new();
 
     /// <summary>
     /// Constructs new UDP communication wrapper
@@ -92,15 +75,6 @@ public class UDP {
         Send(bytes);
     }
 
-    public void Confirm(ushort id) {
-        byte[] msg = [(byte)Type.CONFIRM, .. BitConverter.GetBytes(id)];
-        Client.Send(msg, msg.Length, EP);
-    }
-
-    public void ConfirmMsg(ushort id) {
-        Msgs.Remove(id);
-    }
-
     public void Send(byte[] msg) {
         Client.Send(msg, msg.Length, EP);
 
@@ -108,21 +82,8 @@ public class UDP {
         MsgId++;
     }
 
-    public void Resend() {
-        var now = DateTime.Now;
-        foreach (var msg in Msgs) {
-            var item = msg.Value;
-            if (now - item.Time > TimeSpan.FromMilliseconds(Arg.Timeout)) {
-                Send(item.Msg);
-                item.Next();
-
-                if (item.Retries > Arg.Retransmit)
-                    Msgs.Remove(msg.Key);
-            }
-        }
-    }
-
     public byte[] Recv() {
+        Resend();
         if (Client.Available <= 0)
             return [];
 
@@ -131,6 +92,50 @@ public class UDP {
 
     public void Close() {
         Client.Close();
+    }
+
+    public void Resend() {
+        var now = DateTime.Now;
+        List<int> rem = new();
+        foreach (var msg in Msgs) {
+            var item = msg.Value;
+            if (now - item.Time > TimeSpan.FromMilliseconds(Arg.Timeout)) {
+                Client.Send(item.Msg, item.Msg.Length, EP);
+                item.Next();
+
+                if (item.Retries > Arg.Retransmit)
+                    rem.Add(msg.Key);
+            }
+        }
+
+        foreach (int key in rem) {
+            Msgs.Remove(key);
+        }
+    }
+
+    public Response ParseRecv(InputReader reader, byte[] res) {
+        var recv = Response.None;
+        switch (res[0]) {
+            case (byte)Type.CONFIRM:
+                ParseConfirm(res);
+                return Response.None;
+            case (byte)Type.REPLY:
+                Confirm(res);
+                return ParseReply(reader, res);
+            case (byte)Type.MSG:
+                Confirm(res);
+                ParseErrMsg(reader, res);
+                return Response.Msg;
+            case (byte)Type.ERR:
+                Confirm(res);
+                ParseErrMsg(reader, res, "ERR FROM ");
+                return Response.Err;
+            case (byte)Type.BYE:
+                Confirm(res);
+                return Response.Bye;
+        }
+
+        return recv;
     }
 
     /// <summary>
@@ -148,5 +153,49 @@ public class UDP {
         }
 
         throw new Exception("Cannot get IPv4 of hostname");
+    }
+
+    private void Confirm(byte[] res) {
+        var msgId = BitConverter.ToUInt16(res, 1);
+        byte[] msg = [(byte)Type.CONFIRM, .. BitConverter.GetBytes(msgId)];
+        Client.Send(msg, msg.Length, EP);
+    }
+
+    private void ParseConfirm(byte[] res) {
+        var msgId = BitConverter.ToUInt16(res, 1);
+        Msgs.Remove(msgId);
+    }
+
+    private Response ParseReply(InputReader reader, byte[] res) {
+        var result = "Failure";
+        var recv = Response.ReplyNok;
+        if (res[3] == 1) {
+            result = "Success";
+            recv = Response.ReplyOk;
+        }
+
+        ReadOnlySpan<byte> msgBytes = BytesTillNull(res[6..]);
+        var msg = Encoding.UTF8.GetString(msgBytes);
+        reader.PrintErr($"{result}: {msg}");
+        return recv;
+    }
+
+    private void ParseErrMsg(InputReader reader, byte[] res, string pre = "") {
+        ReadOnlySpan<byte> nameBytes = BytesTillNull(res[3..]);
+        var name = Encoding.UTF8.GetString(nameBytes);
+
+        var offset = 3 + nameBytes.Length + 1;
+        ReadOnlySpan<byte> msgBytes = BytesTillNull(res[offset..]);
+        var msg = Encoding.UTF8.GetString(msgBytes);
+        reader.PrintErr($"{pre}{name}: {msg}");
+    }
+
+    private ReadOnlySpan<byte> BytesTillNull(ReadOnlySpan<byte> bytes) {
+        int index = bytes.IndexOf((byte)0);
+
+        if (index == -1)
+            return bytes;
+
+        return bytes.Slice(0, index);
     }
 }

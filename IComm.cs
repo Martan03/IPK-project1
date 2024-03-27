@@ -11,8 +11,6 @@ public enum ComState {
 }
 
 public interface IComm {
-    ComState State { get; set; }
-
     /// <summary>
     /// Sends Auth message and waits for response
     /// </summary>
@@ -20,7 +18,7 @@ public interface IComm {
     /// <param name="secret">Secret/password</param>
     /// <param name="nick">Display name</param>
     /// <returns>False when Auth cannot be used in current state</returns>
-    bool Auth(string name, string secret, string nick);
+    void Auth(string name, string secret, string nick);
 
     /// <summary>
     /// Joins given channel
@@ -28,7 +26,7 @@ public interface IComm {
     /// <param name="name">Display name</param>
     /// <param name="channel">Channel ID</param>
     /// <returns>Fale when Join cannot be used in current state</returns>
-    bool Join(string name, string channel);
+    void Join(string name, string channel);
 
     /// <summary>
     /// Send MSG to the server
@@ -36,7 +34,7 @@ public interface IComm {
     /// <param name="from">Display name</param>
     /// <param name="msg">Message</param>
     /// <returns>False when Msg cannot be used in current state</returns>
-    bool Msg(string from, string msg);
+    void Msg(string from, string msg);
 
     /// <summary>
     /// Sends ERR to the server
@@ -50,7 +48,22 @@ public interface IComm {
     /// </summary>
     void Bye();
 
-    string Recv();
+    /// <summary>
+    /// Receives data
+    /// </summary>
+    /// <returns>byte array containing data</returns>
+    byte[] Recv();
 
+    /// <summary>
+    /// Parses received data
+    /// </summary>
+    /// <param name="reader">Input reader</param>
+    /// <param name="res">Received data</param>
+    /// <returns></returns>
+    Response ParseRecv(InputReader reader, byte[] res);
+
+    /// <summary>
+    /// Closes the connection
+    /// </summary>
     void Close();
 }
