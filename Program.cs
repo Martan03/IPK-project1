@@ -5,6 +5,9 @@ class Program
     static void Main(string[] args) {
         try {
             Args arg = new(args);
+            if (arg.Help)
+                return;
+
             UDPClient client = new(arg);
             Console.WriteLine("Connected...");
             client.Start();

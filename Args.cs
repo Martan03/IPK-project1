@@ -13,6 +13,7 @@ public class Args {
     public ushort Port { get; private set; } = 4567;
     public ushort Timeout { get; private set; } = 250;
     public byte Retransmit { get; private set; } = 3;
+    public bool Help { get; private set; } = false;
 
     /// <summary>
     /// Parses given arguments
@@ -57,7 +58,8 @@ public class Args {
                         throw new ArgumentException(
                             "Help cannot be combined with other flags"
                         );
-                    Help();
+                    ShowHelp();
+                    Help = true;
                     return;
                 default:
                     throw new ArgumentException(
@@ -105,7 +107,7 @@ public class Args {
     /// <summary>
     /// Prints Help
     /// </summary>
-    private void Help() {
+    private void ShowHelp() {
         Console.WriteLine("TODO");
     }
 }

@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 
 public class UDPClient {
+    ComState State { get; set; } = ComState.Start;
+
     Args Arg { get; set; }
     UDP Com { get; set; }
     string? Name { get; set; }
@@ -8,10 +10,7 @@ public class UDPClient {
 
     public UDPClient(Args arg) {
         Arg = arg;
-        Com = Arg.Type switch {
-            ComType.UDP => new UDP(Arg.Host, Arg.Port),
-            _ => throw new NotImplementedException("TCP is not implemented"),
-        };
+        Com = new UDP(Arg.Host, Arg.Port);
         Reader = new();
 
         Console.CancelKeyPress += delegate {
@@ -22,7 +21,7 @@ public class UDPClient {
 
     public void Start() {
         Reader.ResetPrint();
-        while (Com.State != ComState.End) {
+        while (State != ComState.End) {
             var read = Reader.Read();
             if (read.Length != 0)
                 ParseInput(read);
@@ -40,11 +39,16 @@ public class UDPClient {
     /// </summary>
     /// <param name="text">Text entered by user</param>
     private void ParseInput(string text) {
-        if (text.StartsWith('/'))
-            ParseCmd(text);
+        try {
+            if (text.StartsWith('/'))
+                ParseCmd(text);
 
-        else if (!Com.Msg(Name!, text))
-            Reader.PrintErr("ERR: Cannot send messages in this state");
+            Msg(text);
+        } catch (ArgumentException e) {
+            Reader.PrintErr($"ERR: {e.Message}");
+        } catch (InvalidOperationException e) {
+            Reader.PrintErr($"ERR: {e.Message}");
+        }
     }
 
     /// <summary>
@@ -55,42 +59,13 @@ public class UDPClient {
         string[] parts = text.Split();
         switch (parts[0]) {
             case "/auth":
-                if (parts.Length != 4 || !CheckName(parts[1], 20) ||
-                    !CheckName(parts[2], 128) || !CheckNick(parts[3], 20)) {
-                    Reader.PrintErr(
-                        "ERR: Invalid usage. Type /help to show help"
-                    );
-                    return;
-                }
-
-                if (!Com.Auth(parts[1], parts[2], parts[3])) {
-                    Reader.PrintErr("Cannot use Auth in this state");
-                    return;
-                }
-                Name = parts[3];
+                Auth(parts[1..]);
                 break;
             case "/join":
-                if (parts.Length != 2 || !CheckChannel(parts[1])) {
-                    Reader.PrintErr(
-                        "ERR: Invalid usage. Type /help to show help"
-                    );
-                    return;
-                }
-
-                if (!Com.Join(Name!, parts[1])) {
-                    Reader.PrintErr("ERR: Cannot use Join in this state");
-                    return;
-                }
+                Join(parts[1..]);
                 break;
             case "/rename":
-                if (parts.Length != 2 || !CheckNick(parts[1], 20)) {
-                    Reader.PrintErr(
-                        "ERR: Invalid usage. Type /help to show help"
-                    );
-                    return;
-                }
-
-                Name = parts[1];
+                Rename(parts[1..]);
                 break;
             case "/help":
                 Help();
@@ -171,6 +146,61 @@ public class UDPClient {
         }
     }
 
+
+    private void Auth(ReadOnlySpan<string> args) {
+        if (args.Length != 3)
+            throw new ArgumentException("Auth: invalid number of arguments");
+
+        if (State != ComState.Start && State != ComState.Auth) {
+            throw new InvalidOperationException(
+                "Cannot be authorize in this state"
+            );
+        }
+        State = ComState.Auth;
+
+        Validator.Username(args[0]);
+        Validator.Secret(args[1]);
+        Validator.DisplayName(args[2]);
+
+        Com.Auth(args[0], args[1], args[2]);
+        Name = args[2];
+    }
+
+    private void Join(ReadOnlySpan<string> args) {
+        if (args.Length != 1)
+            throw new ArgumentException("Join: invalid number of arguments");
+
+        if (State != ComState.Open) {
+            throw new InvalidOperationException(
+                "Cannot join channel in this state"
+            );
+        }
+
+        Validator.ChannelID(args[0]);
+        Com.Join(Name!, args[0]);
+    }
+
+    private void Rename(ReadOnlySpan<string> args) {
+        if (args.Length != 1)
+            throw new ArgumentException("Rename: invalid number of arguments");
+
+        Validator.DisplayName(args[0]);
+        Name = args[0];
+    }
+
+    private void Msg(string text) {
+        if (State != ComState.Open) {
+            throw new InvalidOperationException(
+                "Cannot send messages in this state"
+            );
+        }
+
+        Validator.DisplayName(Name!);
+        Validator.MessageContent(text);
+        Com.Msg(Name!, text);
+    }
+
+
     /// <summary>
     /// Displays help
     /// </summary>
@@ -187,25 +217,5 @@ public class UDPClient {
             "/help\n" +
             "  Displays this help"
         );
-    }
-
-    private bool CheckName(string name, int max) {
-        string pattern = @"^[a-zA-Z0-9\-]+$";
-        return name.Length <= max && Regex.IsMatch(name, pattern);
-    }
-
-    private bool CheckChannel(string name) {
-        name = name.Replace(".", "");
-        return CheckName(name, 20);
-    }
-
-    private bool CheckNick(string name, int max) {
-        string pattern = @"^[\x21-\x7E]+$";
-        return name.Length <= max && Regex.IsMatch(name, pattern);
-    }
-
-    private bool CheckContent(string content, int max) {
-        string pattern = @"^[\x20-\x7E]+$";
-        return content.Length <= max && Regex.IsMatch(content, pattern);
     }
 }

@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-public class UDP : IComm
+public class UDP
 {
     public ComState State { get; set; } = ComState.Start;
 
@@ -29,10 +29,8 @@ public class UDP : IComm
         Port = port;
     }
 
-    public bool Auth(string name, string secret, string nick) {
-        State = ComState.Auth;
-        List<byte> msg =
-        [
+    public void Auth(string name, string secret, string nick) {
+        byte[] msg = [
             (byte)Type.AUTH,
             .. BitConverter.GetBytes(MsgId),
             .. Encoding.UTF8.GetBytes(name),
@@ -42,14 +40,11 @@ public class UDP : IComm
             .. Encoding.UTF8.GetBytes(secret),
             0,
         ];
-        MsgId++;
-        Send(msg.ToArray());
-        return true;
+        Send(msg);
     }
 
-    public bool Join(string name, string channel) {
-        List<byte> msg =
-        [
+    public void Join(string name, string channel) {
+        byte[] msg = [
             (byte)Type.JOIN,
             .. BitConverter.GetBytes(MsgId),
             .. Encoding.UTF8.GetBytes(channel),
@@ -57,15 +52,11 @@ public class UDP : IComm
             .. Encoding.UTF8.GetBytes(name),
             0,
         ];
-
-        MsgId++;
-        Send(msg.ToArray());
-        return true;
+        Send(msg);
     }
 
-    public bool Msg(string from, string msg) {
-        List<byte> bytes =
-        [
+    public void Msg(string from, string msg) {
+        byte[] bytes = [
             (byte)Type.MSG,
             .. BitConverter.GetBytes(MsgId),
             .. Encoding.UTF8.GetBytes(from),
@@ -73,10 +64,7 @@ public class UDP : IComm
             .. Encoding.UTF8.GetBytes(msg),
             0,
         ];
-
-        MsgId++;
-        Send(bytes.ToArray());
-        return true;
+        Send(bytes);
     }
 
     public void Err(string from, string msg) {
@@ -89,8 +77,6 @@ public class UDP : IComm
             .. Encoding.UTF8.GetBytes(msg),
             0,
         ];
-
-        MsgId++;
         Send(bytes.ToArray());
     }
 
@@ -109,6 +95,7 @@ public class UDP : IComm
 
     public void Send(byte[] msg) {
         Client.Send(msg, msg.Length, new IPEndPoint(IP, Port));
+        State = ComState.ConfWait;
     }
 
     public string Recv() {

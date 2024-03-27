@@ -1,9 +1,13 @@
+/// <summary>
+/// Communication states
+/// </summary>
 public enum ComState {
     Start,
     Auth,
     Open,
     Error,
     End,
+    ConfWait,
 }
 
 public interface IComm {
