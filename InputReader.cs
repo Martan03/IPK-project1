@@ -64,27 +64,45 @@ public class InputReader {
         return "";
     }
 
+    /// <summary>
+    /// Prints text to stdin
+    /// </summary>
+    /// <param name="text">Text to be printed</param>
     public void Print(string text) {
         Console.WriteLine($"\u001b8\x1b[0J{text}");
         Console.Write($"\u001b7{Text}");
         MoveTo(Pos);
     }
 
+    /// <summary>
+    /// Prints text to stderr
+    /// </summary>
+    /// <param name="text">Text to be printed</param>
     public void PrintErr(string text) {
         Console.Error.WriteLine($"\u001b8\x1b[0J{text}");
         Console.Write($"\u001b7{Text}");
         MoveTo(Pos);
     }
 
+    /// <summary>
+    /// Resets print to current cursor position
+    /// </summary>
     public void ResetPrint() {
         Console.Write($"\u001b7{Text}");
     }
 
+    /// <summary>
+    /// Redraws current text
+    /// </summary>
     private void Redraw() {
         Console.Write($"\u001b8\x1b[0J{Text}");
         MoveTo(Pos);
     }
 
+    /// <summary>
+    /// Handles enter press
+    /// </summary>
+    /// <returns>Inputed string</returns>
     private string Enter() {
         Console.WriteLine($"\u001b8{Text}");
         Console.Write("\u001b7");
@@ -95,6 +113,9 @@ public class InputReader {
         return res;
     }
 
+    /// <summary>
+    /// Handles backspace press
+    /// </summary>
     private void Backspace() {
         if (Pos <= 0)
             return;
@@ -108,6 +129,9 @@ public class InputReader {
         MoveTo(Pos);
     }
 
+    /// <summary>
+    /// Handles delete press
+    /// </summary>
     private void Delete() {
         if (Pos == Text.Length)
             return;
@@ -118,6 +142,10 @@ public class InputReader {
         MoveTo(Pos);
     }
 
+    /// <summary>
+    /// Moves cursor to given position
+    /// </summary>
+    /// <param name="pos">Position in text</param>
     private void MoveTo(int pos) {
         if (pos < 0 || pos > Text.Length)
             return;

@@ -1,3 +1,6 @@
+/// <summary>
+/// Enum representing Reponse types
+/// </summary>
 public enum Response {
     ReplyOk,
     ReplyNok,
@@ -7,16 +10,17 @@ public enum Response {
     None,
 }
 
+/// <summary>
+/// Client implementation
+/// </summary>
 public class Client {
     ComState State { get; set; } = ComState.Start;
 
-    Args Arg { get; set; }
     IComm Com { get; set; }
     string? Name { get; set; }
     InputReader Reader { get; set; }
 
     public Client(Args arg) {
-        Arg = arg;
         Com = arg.Type switch {
             ComType.TCP => new TCP(arg.Host, arg.Port),
             ComType.UDP => new UDP(arg),
@@ -106,7 +110,6 @@ public class Client {
                 }
                 break;
             case ComState.Open:
-                // Add error send
                 if (res == Response.Err) {
                     Com.Bye();
                     State = ComState.End;

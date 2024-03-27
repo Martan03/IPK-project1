@@ -1,5 +1,8 @@
 using System.Text.RegularExpressions;
 
+/// <summary>
+/// Class for validating some fields
+/// </summary>
 public static class Validator {
     /// <summary>
     /// Checks whether Username is valid
