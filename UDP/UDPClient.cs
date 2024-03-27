@@ -11,7 +11,7 @@ public class UDPClient {
 
     public UDPClient(Args arg) {
         Arg = arg;
-        Com = new UDP(Arg.Host, Arg.Port);
+        Com = new UDP(Arg);
         Reader = new();
 
         Console.CancelKeyPress += delegate {
@@ -27,6 +27,7 @@ public class UDPClient {
             if (read.Length != 0)
                 ParseInput(read);
 
+            Com.Resend();
             var recv = Com.Recv();
             if (recv.Length != 0)
                 ParseRecv(recv);
@@ -80,53 +81,66 @@ public class UDPClient {
     }
 
     private void ParseRecv(byte[] res) {
+        var recv = Response.None;
         switch (res[0]) {
             case (byte)Type.CONFIRM:
-                Reader.Print("Confirm");
-                break;
+                ParseConfirm(res);
+                return;
             case (byte)Type.REPLY:
-                ParseReply(res);
-                break;
-            case (byte)Type.AUTH:
-                break;
-            case (byte)Type.JOIN:
+                Success(res);
+                recv = ParseReply(res);
                 break;
             case (byte)Type.MSG:
+                Success(res);
+                ParseErrMsg(res);
+                recv = Response.Msg;
                 break;
             case (byte)Type.ERR:
-                var id = BitConverter.ToUInt16(res, 1);
-                Com.Confirm(id);
-                Reader.Print($"Err: {id}");
+                Success(res);
+                ParseErrMsg(res, "ERR FROM ");
+                recv = Response.Err;
                 break;
             case (byte)Type.BYE:
+                Success(res);
+                recv = Response.Bye;
                 break;
         }
+
+        NextState(recv);
     }
 
-    private void ParseReply(byte[] res) {
+    private void Success(byte[] res) {
         var msgId = BitConverter.ToUInt16(res, 1);
         Com.Confirm(msgId);
+    }
 
+    private void ParseConfirm(byte[] res) {
+        var msgId = BitConverter.ToUInt16(res, 1);
+        //Com.ConfirmMsg(msgId);
+    }
+
+    private Response ParseReply(byte[] res) {
         var result = "Failure";
-        if (res[3] == 1)
+        var recv = Response.ReplyNok;
+        if (res[3] == 1) {
             result = "Success";
+            recv = Response.ReplyOk;
+        }
 
         ReadOnlySpan<byte> msgBytes = BytesTillNull(res[6..]);
         var msg = Encoding.UTF8.GetString(msgBytes);
         Reader.PrintErr($"{result}: {msg}");
+        return recv;
     }
 
-    private void ParseErr(byte[] res) {
-        var msgId = BitConverter.ToUInt16(res, 1);
-        Com.Confirm(msgId);
-
+    private void ParseErrMsg(byte[] res, string pre = "") {
         ReadOnlySpan<byte> nameBytes = BytesTillNull(res[3..]);
         var name = Encoding.UTF8.GetString(nameBytes);
 
         var offset = 3 + nameBytes.Length + 1;
         ReadOnlySpan<byte> msgBytes = BytesTillNull(res[offset..]);
         var msg = Encoding.UTF8.GetString(msgBytes);
-        Reader.PrintErr($"ERR FROM {name}: {msg}");
+        Reader.PrintErr($"{pre}{name}: {msg}");
     }
 
     /// <summary>
@@ -134,10 +148,10 @@ public class UDPClient {
     /// </summary>
     /// <param name="res">Current server response</param>
     private void NextState(Response res) {
-        switch (Com.State) {
+        switch (State) {
             case ComState.Auth:
                 if (res == Response.ReplyOk)
-                    Com.State = ComState.Open;
+                    State = ComState.Open;
                 else if (res == Response.Err)
                     Com.Bye();
                 break;
@@ -148,7 +162,7 @@ public class UDPClient {
                 else if (res == Response.Err)
                     Com.Bye();
                 else if (res == Response.Bye)
-                    Com.State = ComState.End;
+                    State = ComState.End;
                 break;
         }
     }
