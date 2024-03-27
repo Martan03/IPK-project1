@@ -8,8 +8,9 @@ public class UDP
 
     private UdpClient Client { get; set; } = new();
     private IPAddress IP { get; set; }
+    private IPEndPoint RemEP;
     private ushort Port { get; set; }
-    private ushort MsgId { get; set; } = 1;
+    private ushort MsgId { get; set; } = 0;
 
 
     public UDP(string host, ushort port) {
@@ -25,8 +26,8 @@ public class UDP
             throw new Exception("Cannot get IPv4 of hostname");
 
         IP = hostIp!;
-        Console.WriteLine(IP.ToString());
         Port = port;
+        RemEP = new(IP, Port);
     }
 
     public void Auth(string name, string secret, string nick) {
@@ -88,25 +89,21 @@ public class UDP
     }
 
     public void Confirm(ushort id) {
-        List<byte> msg = [(byte)Type.CONFIRM, .. BitConverter.GetBytes(id)];
+        byte[] msg = [(byte)Type.CONFIRM, .. BitConverter.GetBytes(id)];
 
-        Send(msg.ToArray());
+        Send(msg);
     }
 
     public void Send(byte[] msg) {
-        Client.Send(msg, msg.Length, new IPEndPoint(IP, Port));
+        Client.Send(msg, msg.Length, RemEP);
         State = ComState.ConfWait;
     }
 
-    public string Recv() {
+    public byte[] Recv() {
         if (Client.Available <= 0)
-            return "";
+            return [];
 
-        Console.WriteLine("test");
-        IPEndPoint remoteEP = new(IP, 0);
-        byte[] recv = Client.Receive(ref remoteEP);
-
-        return Encoding.UTF8.GetString(recv);
+        return Client.Receive(ref RemEP);
     }
 
     public void Close() {

@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 public class UDPClient {
@@ -28,7 +29,7 @@ public class UDPClient {
 
             var recv = Com.Recv();
             if (recv.Length != 0)
-                Console.WriteLine(recv);
+                ParseRecv(recv);
         }
 
         Com.Close();
@@ -40,8 +41,10 @@ public class UDPClient {
     /// <param name="text">Text entered by user</param>
     private void ParseInput(string text) {
         try {
-            if (text.StartsWith('/'))
+            if (text.StartsWith('/')) {
                 ParseCmd(text);
+                return;
+            }
 
             Msg(text);
         } catch (ArgumentException e) {
@@ -76,50 +79,54 @@ public class UDPClient {
         }
     }
 
-    private void ParseRecv(string res) {
-        if (res.StartsWith("ERR")) {
-            string pattern =
-                @"^ERR FROM ([a-zA-Z0-9\-]+) IS ([\x20-\x7E]+)\r\n";
-            var match = Regex.Match(res, pattern);
-
-            if (!match.Success)
-                return;
-
-            Reader.PrintErr(
-                $"ERR FROM {match.Groups[1].Value}: {match.Groups[2].Value}"
-            );
-            NextState(Response.Err);
-        } else if (res.StartsWith("REPLY OK")) {
-            string pattern = @"^REPLY OK IS ([\x20-\x7E]+)\r\n";
-            var match = Regex.Match(res, pattern);
-
-            if (!match.Success)
-                return;
-
-            Reader.PrintErr($"Success: {match.Groups[1].Value}");
-            NextState(Response.ReplyOk);
-        } else if (res.StartsWith("REPLY NOK")) {
-            string pattern = @"^REPLY NOK IS ([\x20-\x7E]+)\r\n";
-            var match = Regex.Match(res, pattern);
-
-            if (!match.Success)
-                return;
-
-            Reader.PrintErr($"Failure: {match.Groups[1].Value}");
-            NextState(Response.ReplyNok);
-        } else if (res.StartsWith("MSG")) {
-            string pattern =
-                @"MSG FROM ([a-zA-Z0-9\-]+) IS ([\x20-\x7E]+)\r\n";
-            var match = Regex.Match(res, pattern);
-
-            if (!match.Success)
-                return;
-
-            Reader.Print($"{match.Groups[1].Value}: {match.Groups[2].Value}");
-            NextState(Response.Msg);
-        } else if (res.Equals("BYE\r\n")) {
-            Com.State = ComState.End;
+    private void ParseRecv(byte[] res) {
+        switch (res[0]) {
+            case (byte)Type.CONFIRM:
+                Reader.Print("Confirm");
+                break;
+            case (byte)Type.REPLY:
+                ParseReply(res);
+                break;
+            case (byte)Type.AUTH:
+                break;
+            case (byte)Type.JOIN:
+                break;
+            case (byte)Type.MSG:
+                break;
+            case (byte)Type.ERR:
+                var id = BitConverter.ToUInt16(res, 1);
+                Com.Confirm(id);
+                Reader.Print($"Err: {id}");
+                break;
+            case (byte)Type.BYE:
+                break;
         }
+    }
+
+    private void ParseReply(byte[] res) {
+        var msgId = BitConverter.ToUInt16(res, 1);
+        Com.Confirm(msgId);
+
+        var result = "Failure";
+        if (res[3] == 1)
+            result = "Success";
+
+        ReadOnlySpan<byte> msgBytes = BytesTillNull(res[6..]);
+        var msg = Encoding.UTF8.GetString(msgBytes);
+        Reader.PrintErr($"{result}: {msg}");
+    }
+
+    private void ParseErr(byte[] res) {
+        var msgId = BitConverter.ToUInt16(res, 1);
+        Com.Confirm(msgId);
+
+        ReadOnlySpan<byte> nameBytes = BytesTillNull(res[3..]);
+        var name = Encoding.UTF8.GetString(nameBytes);
+
+        var offset = 3 + nameBytes.Length + 1;
+        ReadOnlySpan<byte> msgBytes = BytesTillNull(res[offset..]);
+        var msg = Encoding.UTF8.GetString(msgBytes);
+        Reader.PrintErr($"ERR FROM {name}: {msg}");
     }
 
     /// <summary>
@@ -144,6 +151,15 @@ public class UDPClient {
                     Com.State = ComState.End;
                 break;
         }
+    }
+
+    private ReadOnlySpan<byte> BytesTillNull(ReadOnlySpan<byte> bytes) {
+        int index = bytes.IndexOf((byte)0);
+
+        if (index == -1)
+            return bytes;
+
+        return bytes.Slice(0, index);
     }
 
 
