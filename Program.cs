@@ -5,7 +5,7 @@ class Program
     static void Main(string[] args) {
         try {
             Args arg = new(args);
-            Client client = new(arg);
+            UDPClient client = new(arg);
             Console.WriteLine("Connected...");
             client.Start();
         } catch (Exception e) {

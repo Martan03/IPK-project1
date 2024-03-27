@@ -1,46 +1,62 @@
-using System.ComponentModel;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
 public class UDP : IComm
 {
-    public ComState State { get; set; }
+    public ComState State { get; set; } = ComState.Start;
 
     private UdpClient Client { get; set; } = new();
     private IPAddress IP { get; set; }
     private ushort Port { get; set; }
-    private ushort MsgId { get; set; } = 0;
+    private ushort MsgId { get; set; } = 1;
 
 
     public UDP(string host, ushort port) {
         IPAddress[] addresses = Dns.GetHostAddresses(host);
-        IP = addresses[0];
+        IPAddress? hostIp = null;
+        foreach (IPAddress ip in addresses) {
+            if (ip.AddressFamily == AddressFamily.InterNetwork) {
+                hostIp = ip;
+                break;
+            }
+        }
+        if (hostIp is null)
+            throw new Exception("Cannot get IPv4 of hostname");
+
+        IP = hostIp!;
+        Console.WriteLine(IP.ToString());
         Port = port;
     }
 
     public bool Auth(string name, string secret, string nick) {
-        List<byte> msg = new();
-        msg.Add((byte)Type.AUTH);
-        msg.AddRange(BitConverter.GetBytes(MsgId));
-        msg.AddRange(Encoding.UTF8.GetBytes(name));
-        msg.Add(0);
-        msg.AddRange(Encoding.UTF8.GetBytes(nick));
-        msg.Add(0);
-        msg.AddRange(Encoding.UTF8.GetBytes(secret));
-        msg.Add(0);
+        State = ComState.Auth;
+        List<byte> msg =
+        [
+            (byte)Type.AUTH,
+            .. BitConverter.GetBytes(MsgId),
+            .. Encoding.UTF8.GetBytes(name),
+            0,
+            .. Encoding.UTF8.GetBytes(nick),
+            0,
+            .. Encoding.UTF8.GetBytes(secret),
+            0,
+        ];
         MsgId++;
+        Send(msg.ToArray());
         return true;
     }
 
     public bool Join(string name, string channel) {
-        List<byte> msg = new();
-        msg.Add((byte)Type.JOIN);
-        msg.AddRange(BitConverter.GetBytes(MsgId));
-        msg.AddRange(Encoding.UTF8.GetBytes(channel));
-        msg.Add(0);
-        msg.AddRange(Encoding.UTF8.GetBytes(name));
-        msg.Add(0);
+        List<byte> msg =
+        [
+            (byte)Type.JOIN,
+            .. BitConverter.GetBytes(MsgId),
+            .. Encoding.UTF8.GetBytes(channel),
+            0,
+            .. Encoding.UTF8.GetBytes(name),
+            0,
+        ];
 
         MsgId++;
         Send(msg.ToArray());
@@ -48,13 +64,15 @@ public class UDP : IComm
     }
 
     public bool Msg(string from, string msg) {
-        List<byte> bytes = new();
-        bytes.Add((byte)Type.MSG);
-        bytes.AddRange(BitConverter.GetBytes(MsgId));
-        bytes.AddRange(Encoding.UTF8.GetBytes(from));
-        bytes.Add(0);
-        bytes.AddRange(Encoding.UTF8.GetBytes(msg));
-        bytes.Add(0);
+        List<byte> bytes =
+        [
+            (byte)Type.MSG,
+            .. BitConverter.GetBytes(MsgId),
+            .. Encoding.UTF8.GetBytes(from),
+            0,
+            .. Encoding.UTF8.GetBytes(msg),
+            0,
+        ];
 
         MsgId++;
         Send(bytes.ToArray());
@@ -62,39 +80,43 @@ public class UDP : IComm
     }
 
     public void Err(string from, string msg) {
-        List<byte> bytes = new();
-        bytes.Add((byte)Type.ERR);
-        bytes.AddRange(BitConverter.GetBytes(MsgId));
-        bytes.AddRange(Encoding.UTF8.GetBytes(from));
-        bytes.Add(0);
-        bytes.AddRange(Encoding.UTF8.GetBytes(msg));
-        bytes.Add(0);
+        List<byte> bytes =
+        [
+            (byte)Type.ERR,
+            .. BitConverter.GetBytes(MsgId),
+            .. Encoding.UTF8.GetBytes(from),
+            0,
+            .. Encoding.UTF8.GetBytes(msg),
+            0,
+        ];
 
         MsgId++;
         Send(bytes.ToArray());
     }
 
     public void Bye() {
-        List<byte> bytes = new();
-        bytes.Add((byte)Type.BYE);
-        bytes.AddRange(BitConverter.GetBytes(MsgId));
+        List<byte> bytes = [(byte)Type.BYE, .. BitConverter.GetBytes(MsgId)];
         MsgId++;
+
+        Send(bytes.ToArray());
     }
 
     public void Confirm(ushort id) {
-        List<byte> msg = new();
-        msg.Add((byte)Type.CONFIRM);
-        msg.AddRange(BitConverter.GetBytes(id));
+        List<byte> msg = [(byte)Type.CONFIRM, .. BitConverter.GetBytes(id)];
 
         Send(msg.ToArray());
     }
 
     public void Send(byte[] msg) {
-        Client.Send(msg, msg.Length, IP.ToString(), Port);
+        Client.Send(msg, msg.Length, new IPEndPoint(IP, Port));
     }
 
     public string Recv() {
-        IPEndPoint? remoteEP = null;
+        if (Client.Available <= 0)
+            return "";
+
+        Console.WriteLine("test");
+        IPEndPoint remoteEP = new(IP, 0);
         byte[] recv = Client.Receive(ref remoteEP);
 
         return Encoding.UTF8.GetString(recv);
