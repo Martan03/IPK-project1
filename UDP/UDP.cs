@@ -86,11 +86,11 @@ public class UDP : IComm {
                 return ParseReply(reader, res);
             case (byte)Type.MSG:
                 Confirm(res);
-                ParseErrMsg(reader, res);
+                ParseMsg(reader, res);
                 return Response.Msg;
             case (byte)Type.ERR:
                 Confirm(res);
-                ParseErrMsg(reader, res, "ERR FROM ");
+                ParseErr(reader, res);
                 return Response.Err;
             case (byte)Type.BYE:
                 Confirm(res);
@@ -102,6 +102,10 @@ public class UDP : IComm {
 
     public void Close() {
         Client.Close();
+    }
+
+    public bool CanEnd() {
+        return LastMsg is null && Msgs.Count == 0;
     }
 
     /// <summary>
@@ -139,12 +143,14 @@ public class UDP : IComm {
         LastMsg.Next();
     }
 
-    private void ParseConfirm(byte[] res) {
+    /// <summary>
+    /// Sends confirm message
+    /// </summary>
+    /// <param name="res">Received message in bytes</param>
+    private void Confirm(byte[] res) {
         var msgId = BitConverter.ToUInt16(res, 1);
-
-        MsgId++;
-        LastMsg = null;
-        NextMsg();
+        byte[] msg = [(byte)Type.CONFIRM, .. BitConverter.GetBytes(msgId)];
+        Client.Send(msg, msg.Length, EP);
     }
 
     /// <summary>
@@ -180,14 +186,12 @@ public class UDP : IComm {
         throw new Exception("Cannot get IPv4 of hostname");
     }
 
-    /// <summary>
-    /// Sends confirm message
-    /// </summary>
-    /// <param name="res">Received message in bytes</param>
-    private void Confirm(byte[] res) {
+    private void ParseConfirm(byte[] res) {
         var msgId = BitConverter.ToUInt16(res, 1);
-        byte[] msg = [(byte)Type.CONFIRM, .. BitConverter.GetBytes(msgId)];
-        Client.Send(msg, msg.Length, EP);
+
+        MsgId++;
+        LastMsg = null;
+        NextMsg();
     }
 
     private Response ParseReply(InputReader reader, byte[] res) {
@@ -204,14 +208,24 @@ public class UDP : IComm {
         return recv;
     }
 
-    private void ParseErrMsg(InputReader reader, byte[] res, string pre = "") {
+    private void ParseMsg(InputReader reader, byte[] res) {
         ReadOnlySpan<byte> nameBytes = BytesTillNull(res[3..]);
         var name = Encoding.UTF8.GetString(nameBytes);
 
         var offset = 3 + nameBytes.Length + 1;
         ReadOnlySpan<byte> msgBytes = BytesTillNull(res[offset..]);
         var msg = Encoding.UTF8.GetString(msgBytes);
-        reader.PrintErr($"{pre}{name}: {msg}");
+        reader.Print($"{name}: {msg}");
+    }
+
+    private void ParseErr(InputReader reader, byte[] res) {
+        ReadOnlySpan<byte> nameBytes = BytesTillNull(res[3..]);
+        var name = Encoding.UTF8.GetString(nameBytes);
+
+        var offset = 3 + nameBytes.Length + 1;
+        ReadOnlySpan<byte> msgBytes = BytesTillNull(res[offset..]);
+        var msg = Encoding.UTF8.GetString(msgBytes);
+        reader.PrintErr($"ERR FROM {name}: {msg}");
     }
 
     /// <summary>

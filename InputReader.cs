@@ -92,6 +92,13 @@ public class InputReader {
     }
 
     /// <summary>
+    /// Clears screen and resets print
+    /// </summary>
+    public void ClearReset() {
+        Console.Write($"\x1b[2J\x1b[H\u001b7{Text}");
+    }
+
+    /// <summary>
     /// Redraws current text
     /// </summary>
     private void Redraw() {

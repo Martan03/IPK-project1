@@ -5,9 +5,7 @@ public enum ComState {
     Start,
     Auth,
     Open,
-    Error,
     End,
-    ConfWait,
 }
 
 public interface IComm {
@@ -66,4 +64,10 @@ public interface IComm {
     /// Closes the connection
     /// </summary>
     void Close();
+
+    /// <summary>
+    /// Returns whether communication can end
+    /// </summary>
+    /// <returns></returns>
+    bool CanEnd();
 }

@@ -8,6 +8,7 @@ public enum Response {
     Err,
     Bye,
     None,
+    Invalid,
 }
 
 /// <summary>
@@ -38,7 +39,7 @@ public class Client {
 
     public void Start() {
         Reader.ResetPrint();
-        while (State != ComState.End) {
+        while (State != ComState.End || !Com.CanEnd()) {
             var read = Reader.Read();
             if (read.Length != 0)
                 ParseInput(read);
@@ -89,6 +90,9 @@ public class Client {
             case "/help":
                 Help();
                 break;
+            case "/clear":
+                Reader.ClearReset();
+                break;
             default:
                 Reader.PrintErr($"ERR: Unknown command: {parts[0]}");
                 break;
@@ -101,12 +105,18 @@ public class Client {
     /// <param name="res">Current server response</param>
     private void NextState(Response res) {
         switch (State) {
+            case ComState.Start:
+                if (res != Response.None)
+                    UnexpectedRes();
+                break;
             case ComState.Auth:
                 if (res == Response.ReplyOk) {
                     State = ComState.Open;
                 } else if (res == Response.Err) {
                     Com.Bye();
                     State = ComState.End;
+                } else if (res != Response.ReplyNok) {
+                    UnexpectedRes();
                 }
                 break;
             case ComState.Open:
@@ -115,9 +125,17 @@ public class Client {
                     State = ComState.End;
                 } else if (res == Response.Bye) {
                     State = ComState.End;
+                } else if (res == Response.Invalid) {
+                    UnexpectedRes();
                 }
                 break;
         }
+    }
+
+    private void UnexpectedRes() {
+        State = ComState.End;
+        Com.Err(Name!, "Unexpected response");
+        Com.Bye();
     }
 
     private void Auth(ReadOnlySpan<string> args) {
@@ -157,6 +175,12 @@ public class Client {
         if (args.Length != 1)
             throw new ArgumentException("Rename: invalid number of arguments");
 
+        if (State != ComState.Open) {
+            throw new InvalidOperationException(
+                "Cannot be renamed in this state"
+            );
+        }
+
         Validator.DisplayName(args[0]);
         Name = args[0];
     }
@@ -184,11 +208,11 @@ public class Client {
             "/auth {Username} {Secret} {DisplayName}\n" +
             "  Tries to authorize user\n" +
             "/join {ChannelID}\n" +
-            "  Joins channel with given Channel ID\n" +
+            "Joins channel with given Channel ID\n" +
             "/rename {DisplayName}\n" +
             "  Changes DisplayName to sent new messages with\n" +
-            "/help\n" +
-            "  Displays this help"
+            "/clear\n  Clears screen\n" +
+            "/help\n  Displays this help\n"
         );
     }
 }

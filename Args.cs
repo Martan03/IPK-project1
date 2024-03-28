@@ -108,6 +108,16 @@ public class Args {
     /// Prints Help
     /// </summary>
     private void ShowHelp() {
-        Console.WriteLine("TODO");
+        Console.WriteLine(
+            "Help for IPK Project 1\n\n" +
+            "Mandatory arguments:\n" +
+            "  -t {tcp|udp}\n    Transport protocol used for connection\n" +
+            "  -s <IP/hostname>\n    Server IP or hostname\n\n" +
+            "Optional arguments:\n" +
+            "  -p <Port>\n    Server port\n" +
+            "  -d <Timeout>\n    UDP confirmation timeout\n" +
+            "  -r <Retransmits>\n    Maximum number of UDP retransmissions\n" +
+            "  -h\n    Prints this help (cannot be combined with other args)\n"
+        );
     }
 }

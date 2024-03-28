@@ -32,7 +32,7 @@ public class TCP : IComm {
     }
 
     public void Bye() {
-        Send("BYE");
+        Send("BYE\r\n");
     }
 
     public byte[] Recv() {
@@ -67,6 +67,10 @@ public class TCP : IComm {
     public void Close() {
         Stream.Close();
         Client.Close();
+    }
+
+    public bool CanEnd() {
+        return true;
     }
 
     /// <summary>
@@ -127,7 +131,7 @@ public class TCP : IComm {
     }
 
     private Response ParseMsg(InputReader reader, string msg) {
-        string pattern = @"MSG FROM ([a-zA-Z0-9\-]+) IS ([\x20-\x7E]+)\r\n";
+        string pattern = @"MSG FROM ([\x21-\x7E]+) IS ([\x20-\x7E]+)\r\n";
         return ParseMessage(msg, pattern, match => {
             reader.Print($"{match.Groups[1].Value}: {match.Groups[2].Value}");
             return Response.Msg;
