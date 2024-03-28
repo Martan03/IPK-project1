@@ -22,11 +22,11 @@ public class UDP : IComm {
 
     public void Auth(string name, string secret, string nick) {
         QMsg msg = new(Type.AUTH, [
-            .. Encoding.UTF8.GetBytes(name),
+            .. Encoding.ASCII.GetBytes(name),
             0,
-            .. Encoding.UTF8.GetBytes(nick),
+            .. Encoding.ASCII.GetBytes(nick),
             0,
-            .. Encoding.UTF8.GetBytes(secret),
+            .. Encoding.ASCII.GetBytes(secret),
             0,
         ]);
         Send(msg);
@@ -34,9 +34,9 @@ public class UDP : IComm {
 
     public void Join(string name, string channel) {
         QMsg msg = new(Type.JOIN, [
-            .. Encoding.UTF8.GetBytes(channel),
+            .. Encoding.ASCII.GetBytes(channel),
             0,
-            .. Encoding.UTF8.GetBytes(name),
+            .. Encoding.ASCII.GetBytes(name),
             0,
         ]);
         Send(msg);
@@ -44,9 +44,9 @@ public class UDP : IComm {
 
     public void Msg(string from, string content) {
         QMsg msg = new(Type.MSG, [
-            .. Encoding.UTF8.GetBytes(from),
+            .. Encoding.ASCII.GetBytes(from),
             0,
-            .. Encoding.UTF8.GetBytes(content),
+            .. Encoding.ASCII.GetBytes(content),
             0,
         ]);
         Send(msg);
@@ -54,9 +54,9 @@ public class UDP : IComm {
 
     public void Err(string from, string content) {
         QMsg msg = new(Type.ERR, [
-            .. Encoding.UTF8.GetBytes(from),
+            .. Encoding.ASCII.GetBytes(from),
             0,
-            .. Encoding.UTF8.GetBytes(content),
+            .. Encoding.ASCII.GetBytes(content),
             0,
         ]);
         Send(msg);
@@ -203,28 +203,28 @@ public class UDP : IComm {
         }
 
         ReadOnlySpan<byte> msgBytes = BytesTillNull(res[6..]);
-        var msg = Encoding.UTF8.GetString(msgBytes);
+        var msg = Encoding.ASCII.GetString(msgBytes);
         reader.PrintErr($"{result}: {msg}");
         return recv;
     }
 
     private void ParseMsg(InputReader reader, byte[] res) {
         ReadOnlySpan<byte> nameBytes = BytesTillNull(res[3..]);
-        var name = Encoding.UTF8.GetString(nameBytes);
+        var name = Encoding.ASCII.GetString(nameBytes);
 
         var offset = 3 + nameBytes.Length + 1;
         ReadOnlySpan<byte> msgBytes = BytesTillNull(res[offset..]);
-        var msg = Encoding.UTF8.GetString(msgBytes);
+        var msg = Encoding.ASCII.GetString(msgBytes);
         reader.Print($"{name}: {msg}");
     }
 
     private void ParseErr(InputReader reader, byte[] res) {
         ReadOnlySpan<byte> nameBytes = BytesTillNull(res[3..]);
-        var name = Encoding.UTF8.GetString(nameBytes);
+        var name = Encoding.ASCII.GetString(nameBytes);
 
         var offset = 3 + nameBytes.Length + 1;
         ReadOnlySpan<byte> msgBytes = BytesTillNull(res[offset..]);
-        var msg = Encoding.UTF8.GetString(msgBytes);
+        var msg = Encoding.ASCII.GetString(msgBytes);
         reader.PrintErr($"ERR FROM {name}: {msg}");
     }
 

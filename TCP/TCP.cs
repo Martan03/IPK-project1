@@ -49,7 +49,7 @@ public class TCP : IComm {
     }
 
     public Response ParseRecv(InputReader reader, byte[] res) {
-        string recv = Encoding.UTF8.GetString(res);
+        string recv = Encoding.ASCII.GetString(res);
         if (recv.StartsWith("ERR")) {
             return ParseErr(reader, recv);
         } else if (recv.StartsWith("REPLY OK")) {
@@ -78,7 +78,7 @@ public class TCP : IComm {
     /// </summary>
     /// <param name="msg">Message</param>
     private void Send(string msg) {
-        byte[] data = Encoding.UTF8.GetBytes(msg);
+        byte[] data = Encoding.ASCII.GetBytes(msg);
         Stream.Write(data, 0, data.Length);
     }
 
