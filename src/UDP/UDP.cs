@@ -112,7 +112,7 @@ public class UDP : IComm {
     /// Sends given message
     /// </summary>
     /// <param name="msg">Queue message</param>
-    private void Send(QMsg msg) {
+    public virtual void Send(QMsg msg) {
         if (LastMsg is not null) {
             Msgs.Enqueue(msg);
             return;

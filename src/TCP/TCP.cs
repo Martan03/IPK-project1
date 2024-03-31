@@ -77,7 +77,7 @@ public class TCP : IComm {
     /// Sends given message
     /// </summary>
     /// <param name="msg">Message</param>
-    private void Send(string msg) {
+    public virtual void Send(string msg) {
         byte[] data = Encoding.ASCII.GetBytes(msg);
         Stream.Write(data, 0, data.Length);
     }

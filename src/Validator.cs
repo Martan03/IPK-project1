@@ -52,9 +52,6 @@ public static class Validator {
     /// <param name="channel">ChannelID to be checked</param>
     /// <exception cref="ArgumentException">When invalid</exception>
     public static void ChannelID(string channel) {
-        // TODO: remove this line
-        channel = channel.Replace(".", "");
-
         string pattern = @"^[a-zA-Z0-9\-]+$";
         if (channel.Length > 20 || !Regex.IsMatch(channel, pattern)) {
             throw new ArgumentException(

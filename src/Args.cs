@@ -23,6 +23,7 @@ public class Args {
     public Args(ReadOnlySpan<string> args) {
         bool type = false;
         bool host = false;
+        int len = args.Length;
         while (!args.IsEmpty) {
             switch (args[0]) {
                 case "-t":
@@ -54,7 +55,7 @@ public class Args {
                     Retransmit = ParseArg<byte>(args[0]);
                     break;
                 case "-h":
-                    if (args.Length > 1)
+                    if (len > 1)
                         throw new ArgumentException(
                             "Help cannot be combined with other flags"
                         );
@@ -85,7 +86,9 @@ public class Args {
         string flag = args[0];
         args = args[1..];
         if (args.IsEmpty)
-            throw new Exception($"Flag '{flag}' expects value after it");
+            throw new ArgumentException(
+                $"Flag '{flag}' expects value after it"
+            );
 
         return args;
     }

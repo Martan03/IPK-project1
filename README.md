@@ -93,14 +93,30 @@ that, `Client` desides whether to create `TCP` or `UDP` object.
 
 Client contains only one public method and that is `Start`. This starts the
 main loop of the client app. In the loop it handles user input and receives
-messages by calling `Recv` method. When return value of `Recv` is not empty array, it calls `ParseRecv` to handle
-the received message.
+messages by calling `Recv` method. When return value of `Recv` is not empty
+array, it calls `ParseRecv` to handle the received message.
 
 Client also implements user input parsing, because this is same for both TCP
 and UDP. If the input is command that interacts with server, `Client` calls
 corresponding `IComm` method.
 
 ## Testing:
+
+### User input validation
+Command arguments can contain only certain characters and can be only maximum
+length long. So I tested by providing longer strings then expected and strings
+containing not allowed characters.
+
+### Retrasmits in UDP
+To test this I stopped passing `CONFIRM` messages to UDP and replaced sending
+to server with printing. This tested, whether maximum number of rentrasmits
+work and whether the confirmation timeout timer works. I tested both with
+different values.
+
+### Sent messages format
+Testing correct format of sent message is hard without implementing the server,
+but I used Wireshark to look at the sent messages and compared its format to
+expected format. I tried every message user can send.
 
 ## Extra functionality:
 - `/clear`
