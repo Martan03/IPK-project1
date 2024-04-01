@@ -79,7 +79,7 @@ public class UDP : IComm {
         var recv = Response.None;
         switch (res[0]) {
             case (byte)Type.CONFIRM:
-                ParseConfirm(res);
+                ParseConfirm();
                 return Response.None;
             case (byte)Type.REPLY:
                 Confirm(res);
@@ -188,9 +188,7 @@ public class UDP : IComm {
         throw new Exception("Cannot get IPv4 of hostname");
     }
 
-    private void ParseConfirm(byte[] res) {
-        var msgId = BitConverter.ToUInt16(res, 1);
-
+    private void ParseConfirm() {
         MsgId++;
         LastMsg = null;
         NextMsg();
