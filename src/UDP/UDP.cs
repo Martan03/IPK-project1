@@ -149,6 +149,8 @@ public class UDP : IComm {
     /// <param name="res">Received message in bytes</param>
     private void Confirm(byte[] res) {
         var msgId = BitConverter.ToUInt16(res, 1);
+
+
         byte[] msg = [(byte)Type.CONFIRM, .. BitConverter.GetBytes(msgId)];
         Client.Send(msg, msg.Length, EP);
     }

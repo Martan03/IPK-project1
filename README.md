@@ -102,21 +102,46 @@ corresponding `IComm` method.
 
 ## Testing:
 
-### User input validation
-Command arguments can contain only certain characters and can be only maximum
-length long. So I tested by providing longer strings then expected and strings
-containing not allowed characters.
+I created few tests inside of `tests` directory:
+
+### Arguments testing
+- File: `tests/ArgsTests.cs`
+- Tests correct program arguments parsing:
+    - Mandatory arguments are actually mandatory
+    - Allowed values of arguments
+
+### Command arguments testing
+- File: `tests/ValidatorTests.cs`
+- Tests required format of command arguments
+    - Maximum length of the argument
+
+### UDP Message format testing
+- File: `tests/UDPTests.cs`
+- Tests required UDP message format
+- Had to create class that inherits from UDP class and overrides `Send` method
+in order to be able to test this
+
+### TCP Message format testing
+- File: `tests/TCPTests.cs`
+- Tests required TCP message format
+- Had to create class that inherits from TCP class and overrides `Send` method
+in order to be able to test this
+
+Then I also tested using **Wireshark**, where I inspected sent message format,
+but also messages, that were received, whether they're parced correctly.
+
+I also tested by running the program:
 
 ### Retrasmits in UDP
 To test this I stopped passing `CONFIRM` messages to UDP and replaced sending
 to server with printing. This tested, whether maximum number of rentrasmits
-work and whether the confirmation timeout timer works. I tested both with
-different values.
+work and whether the confirmation timeout works. I tested both with different
+values and messages as well.
 
-### Sent messages format
-Testing correct format of sent message is hard without implementing the server,
-but I used Wireshark to look at the sent messages and compared its format to
-expected format. I tried every message user can send.
+### Overall functionality
+I also connected to provided server and every command user can execute. I tried
+with multiple values as well. I also inspected whether all messages are
+received and shown.
 
 ## Extra functionality:
 - `/clear`

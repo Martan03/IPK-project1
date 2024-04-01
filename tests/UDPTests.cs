@@ -11,15 +11,91 @@ class UDPTester : UDP {
 }
 
 public class UDPTests {
-    /// <summary>
-    /// Tests maximum length of each arguments
-    /// </summary>
     [Fact]
-    public void TestMsgs() {
+    public void TestAuthFormat() {
         Args args = new(["-s", "anton5.fit.vutbr.cz", "-t", "udp"]);
         UDPTester udp = new(args);
 
-        udp.Auth("name", "topsecret", "nick");
+        udp.Auth("a", "b", "c");
+        byte[] res = [
+            0x02,
+            0x01,
+            0,
+            0x61,
+            0,
+            0x63,
+            0,
+            0x62,
+            0
+        ];
+        Assert.Equal(res, udp.SentMsg!.Get(0x01));
+    }
 
+    [Fact]
+    public void TestJoinFormat() {
+        Args args = new(["-s", "anton5.fit.vutbr.cz", "-t", "udp"]);
+        UDPTester udp = new(args);
+
+        udp.Join("a", "b");
+        byte[] res = [
+            0x03,
+            0x05,
+            0,
+            0x62,
+            0,
+            0x61,
+            0
+        ];
+        Assert.Equal(res, udp.SentMsg!.Get(0x05));
+    }
+
+    [Fact]
+    public void TestMsgFormat() {
+        Args args = new(["-s", "anton5.fit.vutbr.cz", "-t", "udp"]);
+        UDPTester udp = new(args);
+
+        udp.Msg("a", "b");
+        byte[] res = [
+            0x04,
+            0x1f,
+            0,
+            0x61,
+            0,
+            0x62,
+            0
+        ];
+        Assert.Equal(res, udp.SentMsg!.Get(0x1f));
+    }
+
+    [Fact]
+    public void TestErrFormat() {
+        Args args = new(["-s", "anton5.fit.vutbr.cz", "-t", "udp"]);
+        UDPTester udp = new(args);
+
+        udp.Err("a", "b");
+        byte[] res = [
+            0xFE,
+            0xff,
+            0x52,
+            0x61,
+            0,
+            0x62,
+            0
+        ];
+        Assert.Equal(res, udp.SentMsg!.Get(0x52ff));
+    }
+
+    [Fact]
+    public void TestByeFormat() {
+        Args args = new(["-s", "anton5.fit.vutbr.cz", "-t", "udp"]);
+        UDPTester udp = new(args);
+
+        udp.Bye();
+        byte[] res = [
+            0xFF,
+            0xff,
+            0x52,
+        ];
+        Assert.Equal(res, udp.SentMsg!.Get(0x52ff));
     }
 }

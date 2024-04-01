@@ -28,7 +28,7 @@ public class TCP : IComm {
     }
 
     public void Err(string from, string msg) {
-        Send($"ERROR FROM {from} IS {msg}\r\n");
+        Send($"ERR FROM {from} IS {msg}\r\n");
     }
 
     public void Bye() {
@@ -65,8 +65,8 @@ public class TCP : IComm {
     }
 
     public void Close() {
-        Stream.Close();
-        Client.Close();
+        // Stream.Close();
+        // Client.Close();
     }
 
     public bool CanEnd() {
